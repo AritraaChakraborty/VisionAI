@@ -58,28 +58,38 @@ async def video_stream(websocket: WebSocket):
                     obj_id = int(box.id[0].item())
                     
                     # 🚨 DEMO FIX: Start the timer and NEVER reset it
-                    if class_name != "person":
-                        if class_name not in class_timers:
-                            class_timers[class_name] = current_time 
-                            
-                        time_present = current_time - class_timers[class_name]
-                        
-                        # Terminal debugging so you can watch it count!
-                        if class_name not in reported_alerts:
-                            print(f"Tracking {class_name.upper()}... {time_present:.1f}s")
-                        
-                        # FIRE THE ALERT
-                        if time_present > 1 and class_name not in reported_alerts:
-                            print(f"🚨 ALERT FIRED: {class_name.upper()}!")
-                            new_alerts.append({
-                                "id": int(current_time * 1000),
-                                "level": "red",
-                                "title": "Unauthorized Object",
-                                "zone": f"Detected: {class_name.capitalize()}",
-                                "time": time.strftime("%H:%M:%S")
-                            })
-                            reported_alerts.add(class_name) 
-                    
+
+
+
+                        if class_name != "person":
+
+        if obj_id not in class_timers:
+            class_timers[obj_id] = current_time
+
+        time_present = current_time - class_timers[obj_id]
+
+        if obj_id not in reported_alerts:
+            print(f"Tracking {class_name} ID:{obj_id} -> {time_present:.1f}s")
+
+        if time_present >= 1 and obj_id not in reported_alerts:
+
+            alert_time = time.strftime("%H:%M:%S")
+
+            print(f"🚨 ALERT: Unauthorized {class_name}")
+
+            new_alerts.append({
+                "id": int(current_time * 1000),
+                "level": "red",
+                "title": "Unauthorized Object",
+                "zone": f"{class_name.capitalize()} detected",
+                "time": alert_time
+            })
+
+            reported_alerts.add(obj_id)
+
+
+
+
                     # UI Coordinates
                     left_pct = (x1 / width) * 100
                     top_pct = (y1 / height) * 100
