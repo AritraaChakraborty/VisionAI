@@ -4,12 +4,6 @@ import { AlertTriangle, ShieldAlert, Users, Camera, Activity, Radio } from "luci
 
 type Alert = { id: number; level: "red" | "yellow" | "green"; title: string; zone: string; time: string };
 
-const seedAlerts: Alert[] = [
-  { id: 1, level: "red", title: "Unauthorized Access", zone: "Sector B-04", time: "12:41:08" },
-  { id: 2, level: "yellow", title: "Crowd Gathering", zone: "Lobby Atrium", time: "12:39:55" },
-  { id: 3, level: "green", title: "Patrol Confirmed", zone: "Perimeter West", time: "12:38:20" },
-];
-
 const toneCls: Record<string, string> = {
   cyan: "border-cyan-400 shadow-[0_0_24px_rgba(0,240,255,0.5)] text-cyan-300",
   yellow: "border-yellow-400 shadow-[0_0_24px_rgba(250,204,21,0.4)] text-yellow-300",
@@ -23,31 +17,29 @@ const levelCls: Record<Alert["level"], string> = {
 };
 
 export default function LiveMonitor() {
-  const [alerts, setAlerts] = useState(seedAlerts);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
   const [now, setNow] = useState("");
   
-  // Real-time AI states
   const [videoFrame, setVideoFrame] = useState<string | null>(null);
   const [liveBoxes, setLiveBoxes] = useState<any[]>([]);
 
-  // Python Backend Connection
   useEffect(() => {
     const ws = new WebSocket('ws://localhost:8000/ws/stream');
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      if (data.image) {
-        setVideoFrame(data.image);
-      }
-      if (data.boxes) {
-        setLiveBoxes(data.boxes); // Update boxes from AI!
+      if (data.image) setVideoFrame(data.image);
+      if (data.boxes) setLiveBoxes(data.boxes);
+      
+      // THIS IS THE LISTENER YOU WERE MISSING!
+      if (data.new_alerts && data.new_alerts.length > 0) {
+        setAlerts((prev) => [...data.new_alerts, ...prev].slice(0, 12));
       }
     };
 
     return () => ws.close();
   }, []);
 
-  // System Clock & Alerts 
   useEffect(() => {
     const tick = () => setNow(new Date().toLocaleTimeString());
     tick();
@@ -63,16 +55,16 @@ export default function LiveMonitor() {
             <div className="text-xs uppercase tracking-widest text-cyan-glow flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-cyan-400 pulse-glow" /> Live · Sync OK
             </div>
-            <h1 className="text-2xl font-bold mt-1">Live Monitor Dashboard</h1>
+            <h1 className="text-2xl font-bold mt-1">VisionAI Command Center</h1>
           </div>
           <div className="text-xs text-muted-foreground font-mono">SYSTEM CLOCK · {now}</div>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Kpi icon={Camera} label="Active Cameras" value="1" tone="cyan" />
-          <Kpi icon={Activity} label="Events / min" value="42" tone="cyan" />
-          <Kpi icon={ShieldAlert} label="Open Threats" value="7" tone="red" />
-          <Kpi icon={Users} label="Tracked Subjects" value="316" tone="yellow" />
+          <Kpi icon={Activity} label="System Status" value="SECURE" tone="green" />
+          <Kpi icon={ShieldAlert} label="Active Breaches" value={alerts.length.toString()} tone="red" />
+          <Kpi icon={Users} label="Tracked Objects" value={liveBoxes.length.toString()} tone="yellow" />
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6">
@@ -83,53 +75,21 @@ export default function LiveMonitor() {
             </div>
             
             <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black border border-cyan-500/30">
-              
-              {/* Actual Live Feed */}
               {videoFrame ? (
-                <img 
-                  src={`data:image/jpeg;base64,${videoFrame}`} 
-                  alt="Live Security Feed" 
-                  className="w-full h-full object-cover"
-                />
+                <img src={`data:image/jpeg;base64,${videoFrame}`} alt="Live Feed" className="w-full h-full object-cover" />
               ) : (
                 <div className="flex items-center justify-center w-full h-full text-cyan-400 animate-pulse font-mono text-sm">
-                  [ ESTABLISHING SECURE LINK TO VISION AI BACKEND... ]
+                  [ ESTABLISHING SECURE LINK... ]
                 </div>
               )}
 
-              {/* UI Overlays */}
-              <div className="absolute inset-0" style={{
-                background: "radial-gradient(ellipse at 30% 40%, rgba(15,42,55,0.2) 0%, rgba(5,15,22,0.4) 60%), repeating-linear-gradient(0deg, rgba(0,240,255,0.04) 0 2px, transparent 2px 4px)",
-              }} />
-              <div className="absolute inset-0 opacity-30" style={{
-                backgroundImage: "linear-gradient(to right, rgba(0,240,255,0.15) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,240,255,0.15) 1px, transparent 1px)",
-                backgroundSize: "40px 40px",
-              }} />
-              <div className="absolute left-0 right-0 h-16 scan-line anim-scan" />
+              <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 30% 40%, rgba(15,42,55,0.2) 0%, rgba(5,15,22,0.4) 60%), repeating-linear-gradient(0deg, rgba(0,240,255,0.04) 0 2px, transparent 2px 4px)" }} />
+              <div className="absolute inset-0 opacity-30" style={{ backgroundImage: "linear-gradient(to right, rgba(0,240,255,0.15) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,240,255,0.15) 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
               
-              {/* DYNAMIC AI TRACKING BOXES */}
               {liveBoxes.map((b, i) => (
-                <div
-                  key={i}
-                  className={`absolute border-2 rounded-md ${toneCls[b.tone] || toneCls.cyan} text-[10px] font-mono transition-all duration-75`}
-                  style={{ left: b.x, top: b.y, width: b.w, height: b.h }}
-                >
+                <div key={i} className={`absolute border-2 rounded-md ${toneCls[b.tone] || toneCls.cyan} text-[10px] font-mono transition-all duration-75`} style={{ left: b.x, top: b.y, width: b.w, height: b.h }}>
                   <span className="absolute -top-5 left-0 px-1.5 py-0.5 bg-black/80 rounded whitespace-nowrap">{b.label}</span>
                   <span className="absolute -bottom-1 -right-1 h-2 w-2 bg-current rounded-full pulse-glow" />
-                </div>
-              ))}
-              
-              <div className="absolute top-3 left-3 text-[10px] font-mono text-cyan-300/80">LAT 40.7128 · LON -74.0060</div>
-              <div className="absolute bottom-3 right-3 text-[10px] font-mono text-cyan-300/80">YOLO-v8 · LIVE INFERENCE</div>
-            </div>
-
-            <div className="grid grid-cols-4 gap-2 mt-3">
-              {[1,2,3,4].map((n) => (
-                <div key={n} className="aspect-video rounded-md border border-cyan-500/20 bg-black relative overflow-hidden">
-                  <div className="absolute inset-0 opacity-50" style={{
-                    background: "radial-gradient(ellipse at center, rgba(0,240,255,0.15), transparent 70%)",
-                  }} />
-                  <span className="absolute top-1 left-1.5 text-[9px] font-mono text-cyan-300/80">CAM-0{n}</span>
                 </div>
               ))}
             </div>
@@ -142,16 +102,23 @@ export default function LiveMonitor() {
               </h2>
               <span className="text-[10px] font-mono text-muted-foreground">{alerts.length} ACTIVE</span>
             </div>
+            
             <div className="overflow-y-auto pr-1 space-y-2 flex-1">
-              {alerts.map((a) => (
-                <div key={a.id} className={`rounded-lg border p-3 text-xs ${levelCls[a.level]}`}>
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold uppercase tracking-wide">{a.title}</span>
-                    <span className="font-mono opacity-70">{a.time}</span>
-                  </div>
-                  <div className="mt-1 opacity-80">{a.zone}</div>
+              {alerts.length === 0 ? (
+                <div className="text-xs text-emerald-400/70 text-center mt-10 font-mono">
+                  [ SCANNING ENVIRONMENT. NO THREATS DETECTED. ]
                 </div>
-              ))}
+              ) : (
+                alerts.map((a) => (
+                  <div key={a.id} className={`rounded-lg border p-3 text-xs ${levelCls[a.level]} animate-in slide-in-from-right-4`}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold uppercase tracking-wide">{a.title}</span>
+                      <span className="font-mono opacity-70">{a.time}</span>
+                    </div>
+                    <div className="mt-1 opacity-80">{a.zone}</div>
+                  </div>
+                ))
+              )}
             </div>
           </aside>
         </div>
@@ -160,8 +127,8 @@ export default function LiveMonitor() {
   );
 }
 
-function Kpi({ icon: Icon, label, value, tone }: { icon: any; label: string; value: string; tone: "cyan" | "red" | "yellow" }) {
-  const toneText = tone === "red" ? "text-red-300" : tone === "yellow" ? "text-yellow-300" : "text-cyan-glow";
+function Kpi({ icon: Icon, label, value, tone }: { icon: any; label: string; value: string; tone: "cyan" | "red" | "yellow" | "green" }) {
+  const toneText = tone === "red" ? "text-red-300" : tone === "yellow" ? "text-yellow-300" : tone === "green" ? "text-emerald-300" : "text-cyan-glow";
   return (
     <div className="glass rounded-xl p-4 flex items-center gap-3">
       <div className={`h-10 w-10 rounded-lg bg-black/40 flex items-center justify-center ${toneText}`}><Icon className="h-5 w-5" /></div>
