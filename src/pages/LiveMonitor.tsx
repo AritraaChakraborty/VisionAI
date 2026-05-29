@@ -8,14 +8,6 @@ const seedAlerts: Alert[] = [
   { id: 1, level: "red", title: "Unauthorized Access", zone: "Sector B-04", time: "12:41:08" },
   { id: 2, level: "yellow", title: "Crowd Gathering", zone: "Lobby Atrium", time: "12:39:55" },
   { id: 3, level: "green", title: "Patrol Confirmed", zone: "Perimeter West", time: "12:38:20" },
-  { id: 4, level: "red", title: "Object Left Behind", zone: "Terminal 3", time: "12:36:11" },
-  { id: 5, level: "yellow", title: "Loitering Detected", zone: "Parking C", time: "12:34:02" },
-];
-
-const boxes = [
-  { x: "18%", y: "32%", w: "22%", h: "38%", label: "Person · 0.96", tone: "cyan" },
-  { x: "55%", y: "48%", w: "16%", h: "26%", label: "Bag · 0.88", tone: "yellow" },
-  { x: "74%", y: "22%", w: "18%", h: "30%", label: "Vehicle · 0.93", tone: "red" },
 ];
 
 const toneCls: Record<string, string> = {
@@ -33,24 +25,34 @@ const levelCls: Record<Alert["level"], string> = {
 export default function LiveMonitor() {
   const [alerts, setAlerts] = useState(seedAlerts);
   const [now, setNow] = useState("");
+  
+  // Real-time AI states
+  const [videoFrame, setVideoFrame] = useState<string | null>(null);
+  const [liveBoxes, setLiveBoxes] = useState<any[]>([]);
 
+  // Python Backend Connection
+  useEffect(() => {
+    const ws = new WebSocket('ws://localhost:8000/ws/stream');
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.image) {
+        setVideoFrame(data.image);
+      }
+      if (data.boxes) {
+        setLiveBoxes(data.boxes); // Update boxes from AI!
+      }
+    };
+
+    return () => ws.close();
+  }, []);
+
+  // System Clock & Alerts 
   useEffect(() => {
     const tick = () => setNow(new Date().toLocaleTimeString());
     tick();
     const t = setInterval(tick, 1000);
-    const a = setInterval(() => {
-      const titles = ["Motion Spike", "Face Match", "Unauthorized Access", "Crowd Gathering", "Anomaly Trace"];
-      const zones = ["Sector A-12", "East Gate", "Server Room", "Roof Cam 7"];
-      const levels: Alert["level"][] = ["red", "yellow", "green"];
-      setAlerts((prev) => [{
-        id: Date.now(),
-        level: levels[Math.floor(Math.random() * 3)],
-        title: titles[Math.floor(Math.random() * titles.length)],
-        zone: zones[Math.floor(Math.random() * zones.length)],
-        time: new Date().toLocaleTimeString(),
-      }, ...prev].slice(0, 12));
-    }, 4000);
-    return () => { clearInterval(t); clearInterval(a); };
+    return () => clearInterval(t);
   }, []);
 
   return (
@@ -79,30 +81,48 @@ export default function LiveMonitor() {
               <div className="flex items-center gap-2 text-cyan-glow"><Radio className="h-3.5 w-3.5" /> CAM-07 · ATRIUM</div>
               <div className="text-muted-foreground font-mono">REC ● 1080p · 60fps</div>
             </div>
-            <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black border border-cyan-500/20">
+            
+            <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black border border-cyan-500/30">
+              
+              {/* Actual Live Feed */}
+              {videoFrame ? (
+                <img 
+                  src={`data:image/jpeg;base64,${videoFrame}`} 
+                  alt="Live Security Feed" 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="flex items-center justify-center w-full h-full text-cyan-400 animate-pulse font-mono text-sm">
+                  [ ESTABLISHING SECURE LINK TO VISION AI BACKEND... ]
+                </div>
+              )}
+
+              {/* UI Overlays */}
               <div className="absolute inset-0" style={{
-                background:
-                  "radial-gradient(ellipse at 30% 40%, rgba(15,42,55,1) 0%, rgba(5,15,22,1) 60%), repeating-linear-gradient(0deg, rgba(0,240,255,0.04) 0 2px, transparent 2px 4px)",
+                background: "radial-gradient(ellipse at 30% 40%, rgba(15,42,55,0.2) 0%, rgba(5,15,22,0.4) 60%), repeating-linear-gradient(0deg, rgba(0,240,255,0.04) 0 2px, transparent 2px 4px)",
               }} />
               <div className="absolute inset-0 opacity-30" style={{
-                backgroundImage:
-                  "linear-gradient(to right, rgba(0,240,255,0.15) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,240,255,0.15) 1px, transparent 1px)",
+                backgroundImage: "linear-gradient(to right, rgba(0,240,255,0.15) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,240,255,0.15) 1px, transparent 1px)",
                 backgroundSize: "40px 40px",
               }} />
               <div className="absolute left-0 right-0 h-16 scan-line anim-scan" />
-              {boxes.map((b, i) => (
+              
+              {/* DYNAMIC AI TRACKING BOXES */}
+              {liveBoxes.map((b, i) => (
                 <div
                   key={i}
-                  className={`absolute border-2 rounded-md ${toneCls[b.tone]} text-[10px] font-mono`}
+                  className={`absolute border-2 rounded-md ${toneCls[b.tone] || toneCls.cyan} text-[10px] font-mono transition-all duration-75`}
                   style={{ left: b.x, top: b.y, width: b.w, height: b.h }}
                 >
-                  <span className="absolute -top-5 left-0 px-1.5 py-0.5 bg-black/70 rounded">{b.label}</span>
+                  <span className="absolute -top-5 left-0 px-1.5 py-0.5 bg-black/80 rounded whitespace-nowrap">{b.label}</span>
                   <span className="absolute -bottom-1 -right-1 h-2 w-2 bg-current rounded-full pulse-glow" />
                 </div>
               ))}
+              
               <div className="absolute top-3 left-3 text-[10px] font-mono text-cyan-300/80">LAT 40.7128 · LON -74.0060</div>
-              <div className="absolute bottom-3 right-3 text-[10px] font-mono text-cyan-300/80">YOLO-v9 · DEPTH-EST · 24ms</div>
+              <div className="absolute bottom-3 right-3 text-[10px] font-mono text-cyan-300/80">YOLO-v8 · LIVE INFERENCE</div>
             </div>
+
             <div className="grid grid-cols-4 gap-2 mt-3">
               {[1,2,3,4].map((n) => (
                 <div key={n} className="aspect-video rounded-md border border-cyan-500/20 bg-black relative overflow-hidden">
