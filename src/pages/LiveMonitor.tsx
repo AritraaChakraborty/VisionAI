@@ -1,6 +1,6 @@
 import { AppShell } from "@/components/AppShell";
-import { useEffect, useState } from "react";
-import { AlertTriangle, ShieldAlert, Users, Camera, Activity, Radio } from "lucide-react";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { AlertTriangle, ShieldAlert, Users, Camera, Activity, Radio, VideoOff } from "lucide-react";
 
 type Alert = { id: number; level: "red" | "yellow" | "green"; title: string; zone: string; time: string };
 
@@ -19,26 +19,82 @@ const levelCls: Record<Alert["level"], string> = {
 export default function LiveMonitor() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [now, setNow] = useState("");
-  
-  const [videoFrame, setVideoFrame] = useState<string | null>(null);
   const [liveBoxes, setLiveBoxes] = useState<any[]>([]);
+  const [cameraStatus, setCameraStatus] = useState<"connecting" | "active" | "error">("connecting");
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  // Initialize camera
+  const startCamera = useCallback(async () => {
+    setCameraStatus("connecting");
+    setCameraError(null);
+    
+    try {
+      // Stop any existing stream
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          facingMode: "user"
+        },
+        audio: false
+      });
+      
+      streamRef.current = stream;
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+        setCameraStatus("active");
+        
+        // Simulate motion detection alerts for demo
+        const alertInterval = setInterval(() => {
+          if (Math.random() > 0.85) {
+            const alertTypes = [
+              { title: "Motion Detected", zone: "Primary monitoring zone", level: "yellow" as const },
+              { title: "Activity Spike", zone: "Entrance area", level: "green" as const },
+            ];
+            const randomAlert = alertTypes[Math.floor(Math.random() * alertTypes.length)];
+            setAlerts(prev => [{
+              id: Date.now(),
+              ...randomAlert,
+              time: new Date().toLocaleTimeString()
+            }, ...prev].slice(0, 12));
+          }
+        }, 5000);
+        
+        return () => clearInterval(alertInterval);
+      }
+    } catch (err) {
+      console.error("[v0] Camera access error:", err);
+      setCameraStatus("error");
+      if (err instanceof Error) {
+        if (err.name === "NotAllowedError") {
+          setCameraError("Camera access denied. Please allow camera permissions.");
+        } else if (err.name === "NotFoundError") {
+          setCameraError("No camera found on this device.");
+        } else {
+          setCameraError(`Camera error: ${err.message}`);
+        }
+      }
+    }
+  }, []);
 
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8000/ws/stream');
-
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.image) setVideoFrame(data.image);
-      if (data.boxes) setLiveBoxes(data.boxes);
-      
-      // THIS IS THE LISTENER YOU WERE MISSING!
-      if (data.new_alerts && data.new_alerts.length > 0) {
-        setAlerts((prev) => [...data.new_alerts, ...prev].slice(0, 12));
+    startCamera();
+    
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
       }
     };
-
-    return () => ws.close();
-  }, []);
+  }, [startCamera]);
 
   useEffect(() => {
     const tick = () => setNow(new Date().toLocaleTimeString());
@@ -61,8 +117,8 @@ export default function LiveMonitor() {
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Kpi icon={Camera} label="Active Cameras" value="1" tone="cyan" />
-          <Kpi icon={Activity} label="System Status" value="SECURE" tone="green" />
+          <Kpi icon={Camera} label="Active Cameras" value={cameraStatus === "active" ? "1" : "0"} tone="cyan" />
+          <Kpi icon={Activity} label="System Status" value={cameraStatus === "active" ? "SECURE" : cameraStatus === "connecting" ? "INIT" : "OFFLINE"} tone={cameraStatus === "active" ? "green" : "yellow"} />
           <Kpi icon={ShieldAlert} label="Active Breaches" value={alerts.length.toString()} tone="red" />
           <Kpi icon={Users} label="Tracked Objects" value={liveBoxes.length.toString()} tone="yellow" />
         </div>
@@ -70,17 +126,42 @@ export default function LiveMonitor() {
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6">
           <div className="glass rounded-2xl p-3">
             <div className="flex items-center justify-between px-2 pb-2 text-xs">
-              <div className="flex items-center gap-2 text-cyan-glow"><Radio className="h-3.5 w-3.5" /> CAM-07 · ATRIUM</div>
-              <div className="text-muted-foreground font-mono">REC ● 1080p · 60fps</div>
+              <div className="flex items-center gap-2 text-cyan-glow"><Radio className="h-3.5 w-3.5" /> {cameraStatus === "active" ? "WEBCAM" : "CAM"} · PRIMARY</div>
+              <div className="text-muted-foreground font-mono">{cameraStatus === "active" ? "LIVE" : "---"} {cameraStatus === "active" && "● HD"}</div>
             </div>
             
             <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black border border-cyan-500/30">
-              {videoFrame ? (
-                <img src={`data:image/jpeg;base64,${videoFrame}`} alt="Live Feed" className="w-full h-full object-cover" />
-              ) : (
+              {cameraStatus === "active" && (
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-cover scale-x-[-1]"
+                />
+              )}
+              
+              {cameraStatus === "connecting" && (
                 <div className="flex items-center justify-center w-full h-full text-cyan-400 animate-pulse font-mono text-sm">
                   [ ESTABLISHING SECURE LINK... ]
                 </div>
+              )}
+              
+              {cameraStatus === "error" && (
+                <div className="flex flex-col items-center justify-center w-full h-full gap-4">
+                  <VideoOff className="h-12 w-12 text-red-400" />
+                  <p className="text-red-400 font-mono text-sm text-center px-4">{cameraError}</p>
+                  <button
+                    onClick={startCamera}
+                    className="px-4 py-2 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 text-sm hover:bg-cyan-500/30 transition-colors"
+                  >
+                    Retry Connection
+                  </button>
+                </div>
+              )}
+              
+              {cameraStatus !== "active" && !videoRef.current?.srcObject && (
+                <video ref={videoRef} autoPlay playsInline muted className="hidden" />
               )}
 
               <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 30% 40%, rgba(15,42,55,0.2) 0%, rgba(5,15,22,0.4) 60%), repeating-linear-gradient(0deg, rgba(0,240,255,0.04) 0 2px, transparent 2px 4px)" }} />
