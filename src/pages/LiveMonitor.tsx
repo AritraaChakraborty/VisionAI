@@ -69,7 +69,7 @@ export default function LiveMonitor() {
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Kpi icon={Camera} label="Active Cameras" value="128" tone="cyan" />
+          <Kpi icon={Camera} label="Active Cameras" value="1" tone="cyan" />
           <Kpi icon={Activity} label="Events / min" value="42" tone="cyan" />
           <Kpi icon={ShieldAlert} label="Open Threats" value="7" tone="red" />
           <Kpi icon={Users} label="Tracked Subjects" value="316" tone="yellow" />
