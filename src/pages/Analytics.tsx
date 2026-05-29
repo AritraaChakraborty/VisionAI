@@ -1,14 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { useMemo, useState } from "react";
 import {
   ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, BarChart, Bar, Legend,
 } from "recharts";
 import { Search } from "lucide-react";
-
-export const Route = createFileRoute("/analytics")({
-  component: AnalyticsPage,
-});
 
 const anomalies = Array.from({ length: 24 }, (_, h) => ({
   hour: `${String(h).padStart(2, "0")}:00`,
@@ -41,7 +36,7 @@ const statusCls: Record<Incident["status"], string> = {
   Resolved: "bg-emerald-500/10 text-emerald-300 border-emerald-500/30",
 };
 
-function AnalyticsPage() {
+export default function Analytics() {
   const [q, setQ] = useState("");
   const filtered = useMemo(
     () => incidents.filter((i) => `${i.id} ${i.type} ${i.status}`.toLowerCase().includes(q.toLowerCase())),
@@ -62,12 +57,6 @@ function AnalyticsPage() {
             <div className="h-72">
               <ResponsiveContainer>
                 <LineChart data={anomalies}>
-                  <defs>
-                    <linearGradient id="g" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="0%" stopColor="#00F0FF" stopOpacity={0.6} />
-                      <stop offset="100%" stopColor="#00F0FF" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
                   <CartesianGrid stroke="rgba(0,240,255,0.1)" />
                   <XAxis dataKey="hour" stroke="#7a8aa0" fontSize={11} />
                   <YAxis stroke="#7a8aa0" fontSize={11} />

@@ -1,11 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { useEffect, useState } from "react";
 import { AlertTriangle, ShieldAlert, Users, Camera, Activity, Radio } from "lucide-react";
-
-export const Route = createFileRoute("/")({
-  component: LiveMonitor,
-});
 
 type Alert = { id: number; level: "red" | "yellow" | "green"; title: string; zone: string; time: string };
 
@@ -35,7 +30,7 @@ const levelCls: Record<Alert["level"], string> = {
   green: "bg-emerald-500/10 border-emerald-500/40 text-emerald-300",
 };
 
-function LiveMonitor() {
+export default function LiveMonitor() {
   const [alerts, setAlerts] = useState(seedAlerts);
   const [now, setNow] = useState("");
 
@@ -71,7 +66,6 @@ function LiveMonitor() {
           <div className="text-xs text-muted-foreground font-mono">SYSTEM CLOCK · {now}</div>
         </div>
 
-        {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Kpi icon={Camera} label="Active Cameras" value="128" tone="cyan" />
           <Kpi icon={Activity} label="Events / min" value="42" tone="cyan" />
@@ -80,27 +74,22 @@ function LiveMonitor() {
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6">
-          {/* Video feed */}
           <div className="glass rounded-2xl p-3">
             <div className="flex items-center justify-between px-2 pb-2 text-xs">
               <div className="flex items-center gap-2 text-cyan-glow"><Radio className="h-3.5 w-3.5" /> CAM-07 · ATRIUM</div>
               <div className="text-muted-foreground font-mono">REC ● 1080p · 60fps</div>
             </div>
             <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black border border-cyan-500/20">
-              {/* simulated feed */}
               <div className="absolute inset-0" style={{
                 background:
                   "radial-gradient(ellipse at 30% 40%, rgba(15,42,55,1) 0%, rgba(5,15,22,1) 60%), repeating-linear-gradient(0deg, rgba(0,240,255,0.04) 0 2px, transparent 2px 4px)",
               }} />
-              {/* grid overlay */}
               <div className="absolute inset-0 opacity-30" style={{
                 backgroundImage:
                   "linear-gradient(to right, rgba(0,240,255,0.15) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,240,255,0.15) 1px, transparent 1px)",
                 backgroundSize: "40px 40px",
               }} />
-              {/* scanline */}
               <div className="absolute left-0 right-0 h-16 scan-line anim-scan" />
-              {/* bounding boxes */}
               {boxes.map((b, i) => (
                 <div
                   key={i}
@@ -111,11 +100,9 @@ function LiveMonitor() {
                   <span className="absolute -bottom-1 -right-1 h-2 w-2 bg-current rounded-full pulse-glow" />
                 </div>
               ))}
-              {/* corner HUD */}
               <div className="absolute top-3 left-3 text-[10px] font-mono text-cyan-300/80">LAT 40.7128 · LON -74.0060</div>
               <div className="absolute bottom-3 right-3 text-[10px] font-mono text-cyan-300/80">YOLO-v9 · DEPTH-EST · 24ms</div>
             </div>
-            {/* thumbnails */}
             <div className="grid grid-cols-4 gap-2 mt-3">
               {[1,2,3,4].map((n) => (
                 <div key={n} className="aspect-video rounded-md border border-cyan-500/20 bg-black relative overflow-hidden">
@@ -128,7 +115,6 @@ function LiveMonitor() {
             </div>
           </div>
 
-          {/* Alert ticker */}
           <aside className="glass rounded-2xl p-4 flex flex-col max-h-[80vh]">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold tracking-wide flex items-center gap-2">

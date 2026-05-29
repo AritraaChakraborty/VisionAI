@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
+import { Link, useNavigate } from "react-router-dom";
 import { useState, type FormEvent } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
@@ -6,11 +6,7 @@ import { AuthShell, FormField } from "@/components/AuthShell";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/login")({
-  component: LoginPage,
-});
-
-function LoginPage() {
+export default function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,7 +18,7 @@ function LoginPage() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       toast.success("Authentication successful");
-      navigate({ to: "/" });
+      navigate("/");
     } catch (err: any) {
       toast.error(err?.message ?? "Login failed");
     } finally {

@@ -1,11 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { useEffect, useState } from "react";
 import { Volume2, Eye, Bell, Lock, User } from "lucide-react";
-
-export const Route = createFileRoute("/settings")({
-  component: SettingsPage,
-});
 
 const members = [
   { name: "Aritraa Chakraborty", initials: "AC" },
@@ -34,20 +29,18 @@ function Toggle({ checked, onChange, label, desc, icon: Icon }: any) {
   );
 }
 
-function SettingsPage() {
+export default function Settings() {
   const [via, setVia] = useState(false);
   const [tts, setTts] = useState(false);
   const [alerts, setAlerts] = useState(true);
   const [twoFa, setTwoFa] = useState(true);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
     setVia(localStorage.getItem("vp-high-contrast") === "1");
   }, []);
   useEffect(() => {
-    if (typeof window === "undefined") return;
     localStorage.setItem("vp-high-contrast", via ? "1" : "0");
-    document.body.parentElement?.classList.toggle("high-contrast", via);
+    document.documentElement.classList.toggle("high-contrast", via);
   }, [via]);
 
   return (
