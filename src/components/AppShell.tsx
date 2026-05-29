@@ -1,4 +1,4 @@
-import { Link, useRouterState, useNavigate, Outlet } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { useEffect, useState, type ReactNode } from "react";
 import { signOut } from "firebase/auth";
@@ -11,34 +11,19 @@ const nav = [
   { to: "/settings", label: "Team & Settings", icon: Settings },
 ] as const;
 
-export function AppShell({ children }: { children?: ReactNode }) {
-  const { user, loading } = useAuth();
+export function AppShell({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   const [highContrast, setHighContrast] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setHighContrast(localStorage.getItem("vp-high-contrast") === "1");
-    }
+    setHighContrast(localStorage.getItem("vp-high-contrast") === "1");
   }, []);
-
-  useEffect(() => {
-    if (!loading && !user) navigate({ to: "/login" });
-  }, [user, loading, navigate]);
-
-  if (loading || !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="h-10 w-10 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <div className={`min-h-screen flex ${highContrast ? "high-contrast" : ""}`}>
-      {/* Sidebar */}
       <aside className={`fixed md:static z-40 inset-y-0 left-0 w-64 glass border-r border-cyan-500/10 transform transition-transform ${open ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}>
         <div className="p-5 flex items-center gap-2 border-b border-cyan-500/10">
           <div className="h-9 w-9 rounded-lg btn-cyan flex items-center justify-center"><Eye className="h-5 w-5" /></div>
@@ -63,9 +48,9 @@ export function AppShell({ children }: { children?: ReactNode }) {
           })}
         </nav>
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-cyan-500/10">
-          <div className="text-xs text-muted-foreground truncate mb-2">{user.email}</div>
+          <div className="text-xs text-muted-foreground truncate mb-2">{user?.email}</div>
           <button
-            onClick={async () => { await signOut(auth); navigate({ to: "/login" }); }}
+            onClick={async () => { await signOut(auth); navigate("/login"); }}
             className="flex items-center gap-2 text-xs text-muted-foreground hover:text-cyan-glow"
           ><LogOut className="h-3.5 w-3.5" /> Sign out</button>
         </div>
@@ -79,7 +64,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
           <span className="font-semibold">VisionPro</span>
           <span />
         </header>
-        <main className="flex-1 overflow-auto">{children ?? <Outlet />}</main>
+        <main className="flex-1 overflow-auto">{children}</main>
       </div>
     </div>
   );
